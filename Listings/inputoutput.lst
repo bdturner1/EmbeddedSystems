@@ -1,0 +1,574 @@
+
+
+
+ARM Macro Assembler    Page 1 
+
+
+    1 00000000         ; InputOutput.s
+    2 00000000         ; Runs on MSP432
+    3 00000000         ; Test the GPIO initialization functions by setting the 
+                       LED
+    4 00000000         ; color according to the status of the switches.
+    5 00000000         ; Daniel Valvano
+    6 00000000         ; July 1, 2015
+    7 00000000         
+    8 00000000         ;  This example accompanies the book
+    9 00000000         ;  "Embedded Systems: Introduction to the MSP432 Microco
+                       ntroller",
+   10 00000000         ;  ISBN: 978-1512185676, Jonathan Valvano, copyright (c)
+                        2015
+   11 00000000         ;  Section 4.2    Program 4.1
+   12 00000000         ;
+   13 00000000         ;Copyright 2015 by Jonathan W. Valvano, valvano@mail.ute
+                       xas.edu
+   14 00000000         ;   You may use, edit, run or distribute this file
+   15 00000000         ;   as long as the above copyright notice remains
+   16 00000000         ;THIS SOFTWARE IS PROVIDED "AS IS".  NO WARRANTIES, WHET
+                       HER EXPRESS, IMPLIED
+   17 00000000         ;OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, IMPLIED WA
+                       RRANTIES OF
+   18 00000000         ;MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE AP
+                       PLY TO THIS SOFTWARE.
+   19 00000000         ;VALVANO SHALL NOT, IN ANY CIRCUMSTANCES, BE LIABLE FOR 
+                       SPECIAL, INCIDENTAL,
+   20 00000000         ;OR CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
+   21 00000000         ;For more information about my classes, my research, and
+                        my books, see
+   22 00000000         ;http://users.ece.utexas.edu/~valvano/
+   23 00000000         
+   24 00000000         ; built-in LED1 connected to P1.0
+   25 00000000         ; negative logic built-in Button 1 connected to P1.1
+   26 00000000         ; negative logic built-in Button 2 connected to P1.4
+   27 00000000         ; built-in red LED connected to P2.0
+   28 00000000         ; built-in green LED connected to P2.1
+   29 00000000         ; built-in blue LED connected to P2.2
+   30 00000000         
+   31 00000000 40004C00 
+                       P1IN    EQU              0x40004C00  ; Port 1 Input
+   32 00000000 40004C01 
+                       P2IN    EQU              0x40004C01  ; Port 2 Input
+   33 00000000 40004C03 
+                       P2OUT   EQU              0x40004C03  ; Port 2 Output
+   34 00000000 40004C02 
+                       P1OUT   EQU              0x40004C02  ; Port 1 Output
+   35 00000000 40004C04 
+                       P1DIR   EQU              0x40004C04  ; Port 1 Direction
+   36 00000000 40004C05 
+                       P2DIR   EQU              0x40004C05  ; Port 2 Direction
+   37 00000000 40004C06 
+                       P1REN   EQU              0x40004C06  ; Port 1 Resistor E
+                                                            nable
+   38 00000000 40004C07 
+                       P2REN   EQU              0x40004C07  ; Port 2 Resistor E
+                                                            nable
+   39 00000000 40004C08 
+                       P1DS    EQU              0x40004C08  ; Port 1 Drive Stre
+
+
+
+ARM Macro Assembler    Page 2 
+
+
+                                                            ngth
+   40 00000000 40004C09 
+                       P2DS    EQU              0x40004C09  ; Port 2 Drive Stre
+                                                            ngth
+   41 00000000 40004C0A 
+                       P1SEL0  EQU              0x40004C0A  ; Port 1 Select 0
+   42 00000000 40004C0B 
+                       P2SEL0  EQU              0x40004C0B  ; Port 2 Select 0
+   43 00000000 40004C0C 
+                       P1SEL1  EQU              0x40004C0C  ; Port 1 Select 1
+   44 00000000 40004C0D 
+                       P2SEL1  EQU              0x40004C0D  ; Port 2 Select 1
+   45 00000000         
+   46 00000000 00000001 
+                       RED     EQU              0x01
+   47 00000000 00000002 
+                       GREEN   EQU              0x02
+   48 00000000 00000004 
+                       BLUE    EQU              0x04
+   49 00000000 00000002 
+                       SW1     EQU              0x02        ; on the left side 
+                                                            of the LaunchPad bo
+                                                            ard
+   50 00000000 00000010 
+                       SW2     EQU              0x10        ; on the right side
+                                                             of the LaunchPad b
+                                                            oard
+   51 00000000         
+   52 00000000                 AREA             |.text|, CODE, READONLY, ALIGN=
+2
+   53 00000000                 THUMB
+   54 00000000                 EXPORT           Start
+   55 00000000         
+   56 00000000         Start
+   57 00000000 F000 F825       BL               Port1_Init  ; initialize P1.1 a
+                                                            nd P1.4 and make th
+                                                            em inputs (P1.1 and
+                                                             P1.4 built-in butt
+                                                            ons)
+   58 00000004 F000 F83D       BL               Port2_Init  ; initialize P2.2-P
+                                                            2.0 and make them o
+                                                            utputs (P2.2-P2.0 b
+                                                            uilt-in LEDs)
+   59 00000008         loop
+   60 00000008 F000 F836       BL               Port1_Input ; read both of the 
+                                                            switches on Port 1
+   61 0000000C 2810            CMP              R0, #0x10   ; R0 == 0x10?
+   62 0000000E D00A            BEQ              sw1pressed  ; if so, switch 1 p
+                                                            ressed
+   63 00000010 2802            CMP              R0, #0x02   ; R0 == 0x02?
+   64 00000012 D00D            BEQ              sw2pressed  ; if so, switch 2 p
+                                                            ressed
+   65 00000014 2800            CMP              R0, #0x00   ; R0 == 0x00?
+   66 00000016 D010            BEQ              bothpressed ; if so, both switc
+                                                            hes pressed
+   67 00000018 2812            CMP              R0, #0x12   ; R0 == 0x12?
+   68 0000001A D013            BEQ              nopressed   ; if so, neither sw
+                                                            itch pressed
+   69 0000001C         ; if none of the above, unexpected return value
+
+
+
+ARM Macro Assembler    Page 3 
+
+
+   70 0000001C F04F 0007       MOV              R0, #(RED+GREEN+BLUE) ; R0 = (R
+                                                            ED|GREEN|BLUE) (all
+                                                             LEDs on)
+   71 00000020 F000 F844       BL               Port2_Output ; turn all of the 
+                                                            LEDs on
+   72 00000024 E7F0            B                loop
+   73 00000026         sw1pressed
+   74 00000026 F04F 0004       MOV              R0, #BLUE   ; R0 = BLUE (blue L
+                                                            ED on)
+   75 0000002A F000 F83F       BL               Port2_Output ; turn the blue LE
+                                                            D on
+   76 0000002E E7EB            B                loop
+   77 00000030         sw2pressed
+   78 00000030 F04F 0001       MOV              R0, #RED    ; R0 = RED (red LED
+                                                             on)
+   79 00000034 F000 F83A       BL               Port2_Output ; turn the red LED
+                                                             on
+   80 00000038 E7E6            B                loop
+   81 0000003A         bothpressed
+   82 0000003A F04F 0002       MOV              R0, #GREEN  ; R0 = GREEN (green
+                                                             LED on)
+   83 0000003E F000 F835       BL               Port2_Output ; turn the green L
+                                                            ED on
+   84 00000042 E7E1            B                loop
+   85 00000044         nopressed
+   86 00000044 F04F 0000       MOV              R0, #0      ; R0 = 0 (no LEDs o
+                                                            n)
+   87 00000048 F000 F830       BL               Port2_Output ; turn all of the 
+                                                            LEDs off
+   88 0000004C E7DC            B                loop
+   89 0000004E         
+   90 0000004E         ;------------Port1_Init------------
+   91 0000004E         ; Initialize GPIO Port 1 for negative logic switches on 
+                       P1.1 and
+   92 0000004E         ; P1.4 as the LaunchPad is wired.  Weak internal pull-up
+                       
+   93 0000004E         ; resistors are enabled.
+   94 0000004E         ; Input: none
+   95 0000004E         ; Output: none
+   96 0000004E         ; Modifies: R0, R1
+   97 0000004E         Port1_Init
+   98 0000004E 4919            LDR              R1, =P1SEL0
+   99 00000050 F04F 0000       MOV              R0, #0x00   ; configure P1.4 an
+                                                            d P1.1 as GPIO
+  100 00000054 7008            STRB             R0, [R1]
+  101 00000056 4918            LDR              R1, =P1SEL1
+  102 00000058 F04F 0000       MOV              R0, #0x00   ; configure P1.4 an
+                                                            d P1.1 as GPIO
+  103 0000005C 7008            STRB             R0, [R1]
+  104 0000005E 4917            LDR              R1, =P1DIR
+  105 00000060 F04F 0000       MOV              R0, #0x00   ; make P1.4 and P1.
+                                                            1 inputs
+  106 00000064 7008            STRB             R0, [R1]
+  107 00000066 4916            LDR              R1, =P1REN
+  108 00000068 F04F 0012       MOV              R0, #0x12   ; enable pull resis
+                                                            tors on P1.4 and P1
+                                                            .1
+  109 0000006C 7008            STRB             R0, [R1]
+  110 0000006E 4915            LDR              R1, =P1OUT
+
+
+
+ARM Macro Assembler    Page 4 
+
+
+  111 00000070 F04F 0012       MOV              R0, #0x12   ; P1.4 and P1.1 are
+                                                             pull-up
+  112 00000074 7008            STRB             R0, [R1]
+  113 00000076 4770            BX               LR
+  114 00000078         
+  115 00000078         ;------------Port1_Input------------
+  116 00000078         ; Read and return the status of the switches.
+  117 00000078         ; Input: none
+  118 00000078         ; Output: R0  0x10 if only Switch 1 is pressed
+  119 00000078         ;         R0  0x02 if only Switch 2 is pressed
+  120 00000078         ;         R0  0x00 if both switches are pressed
+  121 00000078         ;         R0  0x12 if no switches are pressed
+  122 00000078         ; Modifies: R1
+  123 00000078         Port1_Input
+  124 00000078 4913            LDR              R1, =P1IN
+  125 0000007A 7808            LDRB             R0, [R1]    ; read all 8 bits o
+                                                            f Port 1
+  126 0000007C F000 0012       AND              R0, R0, #0x12 ; select input pi
+                                                            ns P1.1 and P1.4
+  127 00000080 4770            BX               LR
+  128 00000082         
+  129 00000082         ;------------Port2_Init------------
+  130 00000082         ; Initialize GPIO Port 2 red, green, and blue LEDs as
+  131 00000082         ; the LaunchPad is wired.
+  132 00000082         ; Input: none
+  133 00000082         ; Output: none
+  134 00000082         ; Modifies: R0, R1
+  135 00000082         Port2_Init
+  136 00000082 4912            LDR              R1, =P2SEL0
+  137 00000084 F04F 0000       MOV              R0, #0x00   ; configure P2.2-P2
+                                                            .0 as GPIO
+  138 00000088 7008            STRB             R0, [R1]
+  139 0000008A 4911            LDR              R1, =P2SEL1
+  140 0000008C F04F 0000       MOV              R0, #0x00   ; configure P2.2-P2
+                                                            .0 as GPIO
+  141 00000090 7008            STRB             R0, [R1]
+  142 00000092 4910            LDR              R1, =P2DS
+  143 00000094 F04F 0007       MOV              R0, #0x07   ; make P2.2-P2.0 hi
+                                                            gh drive strength
+  144 00000098 7008            STRB             R0, [R1]
+  145 0000009A 490F            LDR              R1, =P2DIR
+  146 0000009C F04F 0007       MOV              R0, #0x07   ; make P2.2-P2.0 ou
+                                                            t
+  147 000000A0 7008            STRB             R0, [R1]
+  148 000000A2 490E            LDR              R1, =P2OUT
+  149 000000A4 F04F 0000       MOV              R0, #0x00   ; all LEDs off
+  150 000000A8 7008            STRB             R0, [R1]
+  151 000000AA 4770            BX               LR
+  152 000000AC         
+  153 000000AC         ;------------Port2_Output------------
+  154 000000AC         ; Set the output state of P2.
+  155 000000AC         ; Input: R0  new state of P2 (only 8 least significant b
+                       its)
+  156 000000AC         ; Output: none
+  157 000000AC         ; Modifies: R1
+  158 000000AC         Port2_Output
+  159 000000AC 490B            LDR              R1, =P2OUT
+  160 000000AE 7008            STRB             R0, [R1]    ; write to P2.7-P2.
+                                                            0
+
+
+
+ARM Macro Assembler    Page 5 
+
+
+  161 000000B0 4770            BX               LR
+  162 000000B2         
+  163 000000B2 00 00           ALIGN                        ; make sure the end
+                                                             of this section is
+                                                             aligned
+  164 000000B4                 END                          ; end of file
+              40004C0A 
+              40004C0C 
+              40004C04 
+              40004C06 
+              40004C02 
+              40004C00 
+              40004C0B 
+              40004C0D 
+              40004C09 
+              40004C05 
+              40004C03 
+Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M4.fp --apcs=int
+erwork --depend=.\objects\inputoutput.d -o.\objects\inputoutput.o -I.\RTE\_Targ
+et_1 -IC:\Keil_v5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include -IC:\Keil_v5\ARM\PACK\
+TexasInstruments\MSP432P4xx_DFP\2.2.1\Device\Include --predefine="__EVAL SETA 1
+" --predefine="__UVISION_VERSION SETA 523" --predefine="_RTE_ SETA 1" --predefi
+ne="__MSP432P401R__ SETA 1" --list=.\listings\inputoutput.lst InputOutput.s
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+.text 00000000
+
+Symbol: .text
+   Definitions
+      At line 52 in file InputOutput.s
+   Uses
+      None
+Comment: .text unused
+Port1_Init 0000004E
+
+Symbol: Port1_Init
+   Definitions
+      At line 97 in file InputOutput.s
+   Uses
+      At line 57 in file InputOutput.s
+Comment: Port1_Init used once
+Port1_Input 00000078
+
+Symbol: Port1_Input
+   Definitions
+      At line 123 in file InputOutput.s
+   Uses
+      At line 60 in file InputOutput.s
+Comment: Port1_Input used once
+Port2_Init 00000082
+
+Symbol: Port2_Init
+   Definitions
+      At line 135 in file InputOutput.s
+   Uses
+      At line 58 in file InputOutput.s
+Comment: Port2_Init used once
+Port2_Output 000000AC
+
+Symbol: Port2_Output
+   Definitions
+      At line 158 in file InputOutput.s
+   Uses
+      At line 71 in file InputOutput.s
+      At line 75 in file InputOutput.s
+      At line 79 in file InputOutput.s
+      At line 83 in file InputOutput.s
+      At line 87 in file InputOutput.s
+
+Start 00000000
+
+Symbol: Start
+   Definitions
+      At line 56 in file InputOutput.s
+   Uses
+      At line 54 in file InputOutput.s
+Comment: Start used once
+bothpressed 0000003A
+
+Symbol: bothpressed
+   Definitions
+      At line 81 in file InputOutput.s
+   Uses
+      At line 66 in file InputOutput.s
+
+
+
+ARM Macro Assembler    Page 2 Alphabetic symbol ordering
+Relocatable symbols
+
+Comment: bothpressed used once
+loop 00000008
+
+Symbol: loop
+   Definitions
+      At line 59 in file InputOutput.s
+   Uses
+      At line 72 in file InputOutput.s
+      At line 76 in file InputOutput.s
+      At line 80 in file InputOutput.s
+      At line 84 in file InputOutput.s
+      At line 88 in file InputOutput.s
+
+nopressed 00000044
+
+Symbol: nopressed
+   Definitions
+      At line 85 in file InputOutput.s
+   Uses
+      At line 68 in file InputOutput.s
+Comment: nopressed used once
+sw1pressed 00000026
+
+Symbol: sw1pressed
+   Definitions
+      At line 73 in file InputOutput.s
+   Uses
+      At line 62 in file InputOutput.s
+Comment: sw1pressed used once
+sw2pressed 00000030
+
+Symbol: sw2pressed
+   Definitions
+      At line 77 in file InputOutput.s
+   Uses
+      At line 64 in file InputOutput.s
+Comment: sw2pressed used once
+11 symbols
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Absolute symbols
+
+BLUE 00000004
+
+Symbol: BLUE
+   Definitions
+      At line 48 in file InputOutput.s
+   Uses
+      At line 70 in file InputOutput.s
+      At line 74 in file InputOutput.s
+
+GREEN 00000002
+
+Symbol: GREEN
+   Definitions
+      At line 47 in file InputOutput.s
+   Uses
+      At line 70 in file InputOutput.s
+      At line 82 in file InputOutput.s
+
+P1DIR 40004C04
+
+Symbol: P1DIR
+   Definitions
+      At line 35 in file InputOutput.s
+   Uses
+      At line 104 in file InputOutput.s
+Comment: P1DIR used once
+P1DS 40004C08
+
+Symbol: P1DS
+   Definitions
+      At line 39 in file InputOutput.s
+   Uses
+      None
+Comment: P1DS unused
+P1IN 40004C00
+
+Symbol: P1IN
+   Definitions
+      At line 31 in file InputOutput.s
+   Uses
+      At line 124 in file InputOutput.s
+Comment: P1IN used once
+P1OUT 40004C02
+
+Symbol: P1OUT
+   Definitions
+      At line 34 in file InputOutput.s
+   Uses
+      At line 110 in file InputOutput.s
+Comment: P1OUT used once
+P1REN 40004C06
+
+Symbol: P1REN
+   Definitions
+      At line 37 in file InputOutput.s
+   Uses
+      At line 107 in file InputOutput.s
+Comment: P1REN used once
+P1SEL0 40004C0A
+
+
+
+ARM Macro Assembler    Page 2 Alphabetic symbol ordering
+Absolute symbols
+
+
+Symbol: P1SEL0
+   Definitions
+      At line 41 in file InputOutput.s
+   Uses
+      At line 98 in file InputOutput.s
+Comment: P1SEL0 used once
+P1SEL1 40004C0C
+
+Symbol: P1SEL1
+   Definitions
+      At line 43 in file InputOutput.s
+   Uses
+      At line 101 in file InputOutput.s
+Comment: P1SEL1 used once
+P2DIR 40004C05
+
+Symbol: P2DIR
+   Definitions
+      At line 36 in file InputOutput.s
+   Uses
+      At line 145 in file InputOutput.s
+Comment: P2DIR used once
+P2DS 40004C09
+
+Symbol: P2DS
+   Definitions
+      At line 40 in file InputOutput.s
+   Uses
+      At line 142 in file InputOutput.s
+Comment: P2DS used once
+P2IN 40004C01
+
+Symbol: P2IN
+   Definitions
+      At line 32 in file InputOutput.s
+   Uses
+      None
+Comment: P2IN unused
+P2OUT 40004C03
+
+Symbol: P2OUT
+   Definitions
+      At line 33 in file InputOutput.s
+   Uses
+      At line 148 in file InputOutput.s
+      At line 159 in file InputOutput.s
+
+P2REN 40004C07
+
+Symbol: P2REN
+   Definitions
+      At line 38 in file InputOutput.s
+   Uses
+      None
+Comment: P2REN unused
+P2SEL0 40004C0B
+
+Symbol: P2SEL0
+
+
+
+ARM Macro Assembler    Page 3 Alphabetic symbol ordering
+Absolute symbols
+
+   Definitions
+      At line 42 in file InputOutput.s
+   Uses
+      At line 136 in file InputOutput.s
+Comment: P2SEL0 used once
+P2SEL1 40004C0D
+
+Symbol: P2SEL1
+   Definitions
+      At line 44 in file InputOutput.s
+   Uses
+      At line 139 in file InputOutput.s
+Comment: P2SEL1 used once
+RED 00000001
+
+Symbol: RED
+   Definitions
+      At line 46 in file InputOutput.s
+   Uses
+      At line 70 in file InputOutput.s
+      At line 78 in file InputOutput.s
+
+SW1 00000002
+
+Symbol: SW1
+   Definitions
+      At line 49 in file InputOutput.s
+   Uses
+      None
+Comment: SW1 unused
+SW2 00000010
+
+Symbol: SW2
+   Definitions
+      At line 50 in file InputOutput.s
+   Uses
+      None
+Comment: SW2 unused
+19 symbols
+367 symbols in table
